@@ -1,0 +1,19 @@
+query = """
+CREATE (c:Cliente {nome: $nome})
+CREATE (f:Fattura {numero: $num_fattura})
+CREATE (c)-[:HA_RICEVUTO]->(f)
+"""
+
+query = """
+MATCH (f:Fattura)
+WHERE f.importo > 1000
+RETURN f.numero, f.importo
+"""
+
+prompt = """
+Quanti clienti hanno almeno un contratto attivo nel 2024?
+
+MATCH (c:Cliente)-[:HA_CONTRATTO]->(contr:Contratto)
+WHERE contr.data_inizio <= date('2024-12-31') AND contr.data_fine >= date('2024-01-01')
+RETURN count(DISTINCT c) AS clienti_contratto_attivo_2024
+"""

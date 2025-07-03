@@ -1,0 +1,94 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.svm import LinearSVC
+from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
+from collections import Counter
+import matplotlib.pyplot as plt
+
+# Carica dataset
+df = pd.read_csv(r'C:\Users\ER134AS\OneDrive - EY\Apps\ai-academy-main\ai-academy\Giorno_12\spam.csv', sep=',', header=0, encoding='latin1')
+df = df[['v1', 'v2']]  # Tieni solo le colonne utili
+df.columns = ['label', 'message']  # Rinomina le colonne
+print(df.columns)
+
+# Rimuovi righe con valori mancanti
+df = df.dropna(subset=['message'])
+
+# Preprocessing su df
+df['message'] = df['message'].str.lower()
+
+# Nuovi SMS generati (da GPT)
+new_spam = [
+    "Congratulations! You've been selected to receive a FREE iPhone 14. Click now to claim → bit.ly/winphone2025",
+    "You’ve won a shopping voucher worth £500! Reply WIN to 82055 to claim. Limited time only. T&Cs apply.",
+    "URGENT: Your Netflix account will be suspended today. Verify now: secure-netflix-check.com",
+    "Claim your £250 Tesco gift card now! Just answer 2 simple questions. Text GIFT to 80233.",
+    "You’ve been pre-approved for a £5,000 loan. No credit check. Call 0900 787 3434 now!",
+    "Congratulations! You’ve earned 1 week free VIP access to dating matches in your area. Join now: funmatch-dating.co.uk",
+    "Free ringtone for your mobile! Reply TONE to 88777 and get the latest hits. Subscription applies.",
+    "Update your parcel delivery status now or it will be returned. Click: trackit123.uk/delivery",
+    "Get FREE Bitcoin worth $25! Sign up today at crypto-bonus-now.net",
+    "Your number was chosen! Win a luxury cruise for 2. Text CRUISE to 77122 before midnight."
+]
+
+new_ham = [
+    "Hey! I’ll be a bit late to dinner. Traffic is crazy right now.",
+    "Don’t forget the meeting at 3pm tomorrow. Bring the printouts, please.",
+    "Just landed. I’ll grab my bags and text you when I’m outside.",
+    "Can you water the plants while I’m away? I’ll bring you something from Rome :)",
+    "Feeling tired today. Might just stay in and watch a movie.",
+    "Let me know when you're free to catch up, been too long!",
+    "The pizza guy is here! Come downstairs.",
+    "Happy birthday! Hope you have a wonderful day with lots of cake 🥳",
+    "Got the job!!! Thanks for all the support ❤️",
+    "Tell mom I’ll call her tonight. Been swamped all day."
+]
+
+# Crea DataFrame dei nuovi SMS
+df_augmented = pd.DataFrame({
+    'label': ['spam'] * len(new_spam) + ['ham'] * len(new_ham),
+    'message': new_spam + new_ham
+})
+
+# Aggiungi al dataset originale
+df_full = pd.concat([df, df_augmented], ignore_index=True)
+
+# Train/test split
+X_train, X_test, y_train, y_test = train_test_split(df_full['message'], df_full['label'], test_size=0.2, random_state=42)
+
+
+# TfidfVectorizer
+vectorizer = TfidfVectorizer(stop_words='english')
+X_train_vec = vectorizer.fit_transform(X_train)
+X_test_vec = vectorizer.transform(X_test)
+
+# Modello SVM
+model = LinearSVC()
+model.fit(X_train_vec, y_train)
+
+# Predizioni
+y_pred = model.predict(X_test_vec)
+
+# Report
+print(classification_report(y_test, y_pred))
+
+# Matrice di confusione
+cm = confusion_matrix(y_test, y_pred, labels=['ham', 'spam'])
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['ham', 'spam'])
+disp.plot(cmap=plt.cm.Blues)
+plt.title("Matrice di Confusione")
+plt.show()
+
+# 1. Analizza i falsi negativi/positivi
+from sklearn.metrics import confusion_matrix
+
+false_negatives = X_test[(y_test == 'spam') & (y_pred == 'ham')]
+false_positives = X_test[(y_test == 'ham') & (y_pred == 'spam')]
+print(f"Falsi negativi (spam classificati come ham): {len(false_negatives)}")
+print(f"Falsi positivi (ham classificati come spam): {len(false_positives)}")
+print("Esempi di falsi negativi:")
+print(false_negatives.tolist()[:5])  # Mostra i primi 5 esempi
+print("Esempi di falsi positivi:")
+print(false_positives.tolist()[:5])  # Mostra i primi 5 esempi
+
